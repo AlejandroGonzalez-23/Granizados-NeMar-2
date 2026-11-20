@@ -932,6 +932,84 @@ h4 {
   color: var(--morado-oscuro);
 }
 
+/* --- Selector de cantidad (+ / -) --- */
+.field-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--morado-oscuro);
+}
+
+.qty-control {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--blanco);
+}
+
+.qty-btn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: var(--morado-suave);
+  color: var(--morado-oscuro);
+  font-family: inherit;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: var(--morado);
+  color: #fff;
+}
+
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qty-btn:focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: -3px;
+}
+
+.qty-value {
+  min-width: 54px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--morado-oscuro);
+}
+
+.card-qty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gris);
+}
+
+.qty-control--sm .qty-btn {
+  width: 36px;
+  height: 36px;
+  font-size: 1.25rem;
+}
+
+.qty-control--sm .qty-value {
+  min-width: 40px;
+  font-size: 0.95rem;
+}
+
 .product-ingredients {
   font-size: 0.82rem;
   line-height: 1.5;
@@ -942,9 +1020,9 @@ h4 {
   color: var(--morado-oscuro);
 }
 
-/* El botón de pedido siempre al final, visible sin desplazarse */
+/* Cantidad y botón de pedido siempre al final de la tarjeta */
 .product-card .btn-block {
-  margin-top: auto;
+  margin-top: 0.7rem;
 }
 
 /* --- Botón flotante de WhatsApp --- */

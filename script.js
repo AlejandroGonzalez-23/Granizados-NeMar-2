@@ -14,6 +14,33 @@ function waLink(message) {
   return "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(message);
 }
 
+const MIN_QTY = 1;
+const MAX_QTY = 20;
+
+/* Texto natural para el pedido: "un granizado" / "3 granizados" */
+function cantidadTexto(qty) {
+  return qty === 1 ? "un granizado" : `${qty} granizados`;
+}
+
+/* Lee y aplica + / - en un control de cantidad, devolviendo el nuevo valor */
+function cambiarCantidad(control, action) {
+  const out = control.querySelector(".qty-value");
+  const actual = Number(out.textContent) || MIN_QTY;
+  const nuevo = Math.min(
+    MAX_QTY,
+    Math.max(MIN_QTY, actual + (action === "inc" ? 1 : -1))
+  );
+  out.textContent = String(nuevo);
+
+  control.querySelectorAll(".qty-btn").forEach((btn) => {
+    btn.disabled =
+      (btn.dataset.qtyAction === "dec" && nuevo <= MIN_QTY) ||
+      (btn.dataset.qtyAction === "inc" && nuevo >= MAX_QTY);
+  });
+
+  return nuevo;
+}
+
 /* ---------- Enlaces de WhatsApp ---------- */
 function initWhatsAppLinks() {
   document.querySelectorAll("[data-wa]").forEach((link) => {
@@ -24,28 +51,46 @@ function initWhatsAppLinks() {
 }
 
 /* ---------- Botones "Pedir" de cada producto ----------
-   Solo estos botones abren WhatsApp. Si el usuario seleccionó un tamaño
-   en la tarjeta, el mensaje lo incluye; si no, muestra las presentaciones. */
+   Solo estos botones abren WhatsApp. El mensaje incluye la cantidad
+   elegida y, si hay un tamaño seleccionado, su precio y el total. */
 function initProductButtons() {
   document.querySelectorAll(".product-card .btn-block[data-product]").forEach((button) => {
     button.addEventListener("click", () => {
       const product = button.dataset.product;
       const card = button.closest(".product-card");
       const selected = card ? card.querySelector(".size-option.is-selected") : null;
+      const out = card ? card.querySelector(".qty-control .qty-value") : null;
+      const qty = Math.min(
+        MAX_QTY,
+        Math.max(MIN_QTY, Number(out && out.textContent) || MIN_QTY)
+      );
 
       let message;
       if (selected) {
         const { size, price } = selected.dataset;
+        const unit = Number(price);
         message =
-          `Hola, quiero pedir un granizado de ${product} de ${size} (${money(price)}) 🍧\n` +
+          `Hola, quiero pedir ${cantidadTexto(qty)} de ${product} de ${size} (${money(unit)} c/u) 🍧\n` +
+          (qty > 1 ? `Total estimado: ${money(unit * qty)}\n` : "") +
           "¿Me confirmas disponibilidad?";
       } else {
         message =
-          `Hola, quiero pedir un granizado de ${product} 🍧\n` +
+          `Hola, quiero pedir ${cantidadTexto(qty)} de ${product} 🍧\n` +
           "Presentaciones: 8 oz $9.000 · 12 oz $11.000 · 16 oz $13.000\n" +
+          (qty > 1 ? `Cantidad: ${qty}\n` : "") +
           "¿Me confirmas disponibilidad?";
       }
       window.open(waLink(message), "_blank", "noopener,noreferrer");
+    });
+  });
+}
+
+/* ---------- Cantidad en cada tarjeta ---------- */
+function initCardQuantities() {
+  document.querySelectorAll(".product-card .qty-control").forEach((control) => {
+    control.querySelectorAll(".qty-btn").forEach((btn) => {
+      btn.disabled = btn.dataset.qtyAction === "dec";
+      btn.addEventListener("click", () => cambiarCantidad(control, btn.dataset.qtyAction));
     });
   });
 }
@@ -76,19 +121,26 @@ function initBuilder() {
 
   const totalEl = document.getElementById("builder-total");
   const sendBtn = document.getElementById("builder-send");
+  const qtyControl = form.querySelector(".qty-control");
 
   function getSelection() {
     const size = form.querySelector('input[name="size"]:checked');
     const sweet = form.querySelector('input[name="sweet"]:checked');
     const toppings = [...form.querySelectorAll('input[name="topping"]:checked')];
+    const qtyOut = qtyControl ? qtyControl.querySelector(".qty-value") : null;
 
     const base = size ? Number(size.dataset.price) : 0;
     const extras = toppings.reduce(
       (sum, topping) => sum + Number(topping.dataset.price),
       0
     );
+    const qty = Math.min(
+      MAX_QTY,
+      Math.max(MIN_QTY, Number(qtyOut && qtyOut.textContent) || MIN_QTY)
+    );
 
     return {
+      qty,
       size: size ? size.value : "",
       base,
       flavor1: form.querySelector("#flavor-1").value,
@@ -96,32 +148,49 @@ function initBuilder() {
       sweet: sweet ? sweet.value : "",
       toppings: toppings.map((topping) => topping.value),
       extras,
-      total: base + extras,
+      unit: base + extras,
     };
   }
 
   function render() {
     const selection = getSelection();
-    totalEl.textContent = money(selection.total);
+    totalEl.textContent = money(selection.unit * selection.qty);
+    if (qtyControl) {
+      qtyControl.querySelectorAll(".qty-btn").forEach((btn) => {
+        btn.disabled =
+          (btn.dataset.qtyAction === "dec" && selection.qty <= MIN_QTY) ||
+          (btn.dataset.qtyAction === "inc" && selection.qty >= MAX_QTY);
+      });
+    }
     return selection;
   }
 
   form.addEventListener("input", render);
   form.addEventListener("change", render);
+  form.addEventListener("click", (event) => {
+    const btn = event.target.closest(".qty-btn");
+    if (!btn || !qtyControl) return;
+    cambiarCantidad(qtyControl, btn.dataset.qtyAction);
+    render();
+  });
   render();
 
   sendBtn.addEventListener("click", () => {
     const s = render();
+    const total = s.unit * s.qty;
     const lines = [
-      "Hola, quiero pedir este granizado 🍧",
+      `Hola, quiero pedir ${cantidadTexto(s.qty)} con estos detalles 🍧`,
       "",
+      `• Cantidad: ${s.qty}`,
       `• Tamaño: ${s.size} (${money(s.base)})`,
       `• Sabor principal: ${s.flavor1}`,
       `• Segundo sabor: ${s.flavor2 || "sin segundo sabor"}`,
       `• Nivel de dulce: ${s.sweet}`,
       `• Toppings: ${s.toppings.length ? s.toppings.join(", ") : "ninguno"}`,
       "",
-      `Total estimado: ${money(s.total)}`,
+      `• Precio por unidad: ${money(s.unit)}`,
+      `Total estimado: ${money(total)}` +
+        (s.qty > 1 ? ` (${s.qty} × ${money(s.unit)})` : ""),
     ];
 
     window.open(waLink(lines.join("\n")), "_blank", "noopener,noreferrer");
@@ -209,6 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initWhatsAppLinks();
   initProductButtons();
   initSizeOptions();
+  initCardQuantities();
   initBuilder();
   initFlavorFilters();
   initNav();
