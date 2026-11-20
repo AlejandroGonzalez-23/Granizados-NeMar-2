@@ -944,6 +944,8 @@ h4 {
 .qty-control {
   display: inline-flex;
   align-items: center;
+  justify-self: start;
+  width: fit-content;
   border: 1px solid var(--linea);
   border-radius: 999px;
   overflow: hidden;
